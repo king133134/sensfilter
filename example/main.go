@@ -3,14 +3,14 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/king133134/sensfilter"
+	"github.com/king133134/sensfilter/http"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"io"
 	"log"
 	"os"
 	"runtime"
-	"sensfilter"
-	"sensfilter/http"
 	"time"
 )
 
