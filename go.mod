@@ -37,3 +37,5 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace sensfilter => github.com/king133134/sensfilter latest
