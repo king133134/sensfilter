@@ -13,7 +13,7 @@
 *   支持中英文敏感词过滤
 *   支持敏感词搜索和替换
 *   支持用户自定义跳过字符列表
-*   支持快速很多快捷方式使用：字符串数组、文件、MySQL、网页.详情使用请看[example](github.com/king133134/sensfilter/example/main.go)
+*   支持快速很多快捷方式使用：字符串数组、文件、MySQL、网页.详情使用请看[example](https://github.com/king133134/sensfilter/blob/master/example/main.go)
 *   支持当成一个单独http服务器启动，是基于[gin](https://github.com/gin-gonic/gin)
 
 快速开始
@@ -56,4 +56,4 @@ func main() {
 许可证
 ---
 
-[MIT](https://github.com/king133134/sensfilter/blob/main/LICENSE)
+[MIT](https://github.com/king133134/sensfilter/blob/master/LICENSE)
