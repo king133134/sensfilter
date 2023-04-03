@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form action="/check" method="post">
+    <h1>{{if .title}}{{.title}}{{else}}Example{{end}}</h1>
+    <p>time: {{.time}} ms</p>
+    <p>memory: {{.memory}} MB</p>
+    <p>trie size: {{.size}}</p>
+    <p>skip list: {{.skip}}</p>
+    <label>
+        <textarea name="text" style="height: 200px;width: 60%"></textarea>
+    </label>
+    <input type="submit" value="submit">
+</form>
+</body>
+</html>
