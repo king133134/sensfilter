@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.9.0
-	github.com/goccy/go-json v0.10.1
+	github.com/goccy/go-json v0.10.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/gorm v1.24.6

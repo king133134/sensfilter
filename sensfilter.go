@@ -92,28 +92,28 @@ func MySQL(conf *DatabaseConf, skip ...string) (search *Search, err error) {
 	return &Search{writer}, nil
 }
 
-type Options struct {
+type options struct {
 	writer *TrieWriter
 	skip   *Skip
 }
 
-type Option func(options *Options)
+type Option func(options *options)
 
 func SetWriter(w *TrieWriter) Option {
-	return func(options *Options) {
+	return func(options *options) {
 		options.writer = w
 	}
 }
 
 func SetSortedRunesSkip(s []rune) Option {
-	return func(options *Options) {
+	return func(options *options) {
 		skip := &Skip{list: s}
 		options.skip = skip
 	}
 }
 
 func SetSortedSkip(s string) Option {
-	return func(options *Options) {
+	return func(options *options) {
 		skip := &Skip{}
 		skip.SetSorted(s)
 		options.skip = skip
@@ -121,7 +121,7 @@ func SetSortedSkip(s string) Option {
 }
 
 func SetSkip(s string) Option {
-	return func(options *Options) {
+	return func(options *options) {
 		skip := &Skip{}
 		skip.Set(s)
 		options.skip = skip
@@ -129,7 +129,7 @@ func SetSkip(s string) Option {
 }
 
 func NewSearch(opts ...Option) *Search {
-	opt := &Options{
+	opt := &options{
 		skip:   &Skip{list: []rune(sortedSkipList)},
 		writer: NewTrieWriter(),
 	}
