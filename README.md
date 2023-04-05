@@ -29,11 +29,9 @@ shell
 go get github.com/king133134/sensfilter
 ```
 
-### 使用
+### 快速开始
 
 以下是一个简单的示例代码：
-
-go
 
 ```go
 package main
@@ -45,12 +43,49 @@ import (
 
 func main() {
 	words := []string{"林茹", "林如", "临蓐", "空子", "霸王龙", "我是个SB", "是我", "TMD", "他妈的", "他妈"}
-	obj := sensfilter.Strings(words)
+	filter := sensfilter.Strings(words)
 	str := []byte("我空ss子sss我是霸**王*龙,我是我我是个(S)(B)真的,TMD，他妈的")
-	fmt.Println(obj.Find(str))
-	fmt.Println(string(obj.Replace(str, '*')))
-	fmt.Println(string(obj.ReplaceRune(str, '*')))
+	fmt.Println(filter.Find(str))
+	fmt.Println(string(filter.Replace(str, '*')))
+	fmt.Println(string(filter.ReplaceRune(str, '*')))
 }
+```
+
+输出：
+```text
+[word:霸王龙 mathced:霸**王*龙 start:20 end:31; word:是我 mathced:是我 start:36 end:41; word:我是个SB mathced:我是个(S)(B start:42 end:55; word:TMD mathced:TMD start:64 end:66; word:他妈的 mathced:他妈的 start:70 end:78;]
+我空ss子sss我是************,我********************)真的,***，*********
+我空ss子sss我是******,我**********)真的,***，***
+```
+
+### 带有自定义跳过字符列表
+
+以下是一个简单的示例代码：
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/king133134/sensfilter"
+)
+
+func main() {
+	words := []string{"林茹", "林如", "临蓐", "空子", "霸王龙", "我是个SB", "是我", "TMD", "他妈的", "他妈"}
+	filter := sensfilter.Strings(words, "*!")
+	str := []byte("我空ss子sss我是霸**王*龙,我是我我是个(S)(B)真的,TMD，他妈的")
+	fmt.Println(filter.Find(str))
+	fmt.Println(string(filter.Replace(str, '*')))
+	fmt.Println(string(filter.ReplaceRune(str, '*')))
+}
+```
+
+上面的"我是个(S)(B)"就无法匹配，默认跳过的字符列表是包含"()"，默认的字符列表[trie.go](https://github.com/king133134/sensfilter/blob/master/skip.go)的sortedSkipList  
+输出：
+```text
+[word:霸王龙 mathced:霸**王*龙 start:20 end:31; word:是我 mathced:是我 start:36 end:41; word:TMD mathced:TMD start:64 end:66; word:他妈的 mathced:他妈的 start:70 end:78;]
+我空ss子sss我是************,我******我是个(S)(B)真的,***，*********
+我空ss子sss我是******,我**我是个(S)(B)真的,***，***
 ```
 
 许可证
