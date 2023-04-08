@@ -5,7 +5,6 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"net/http"
-	"os"
 	"sort"
 )
 
@@ -50,23 +49,19 @@ func Network(pageUrl string, skip ...string) (search *Search, err error) {
 		_ = resp.Body.Close()
 	}()
 	writer := search.TrieWriter()
-	if _, err = io.Copy(writer, resp.Body); err != nil {
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return nil, err
 	}
+	writer.InsertBytes(data)
 	writer.BuildFail()
 	return search, nil
 }
 
 func File(filename string, skip ...string) (search *Search, err error) {
 	search = NewSearch(SetSortedRunesSkip(skipStr(skip...)))
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
 	writer := search.TrieWriter()
-	if _, err = io.Copy(writer, f); err != nil {
-		return nil, err
-	}
+	writer.InsertFile(filename)
 	writer.BuildFail()
 	return &Search{writer}, nil
 }
