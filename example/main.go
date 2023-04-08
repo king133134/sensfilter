@@ -7,7 +7,6 @@ import (
 	"github.com/king133134/sensfilter/http"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"io"
 	"log"
 	"os"
 	"runtime"
@@ -177,16 +176,8 @@ func mySourceFunc(w *sensfilter.TrieWriter) {
 
 // myFileSourceFunc 是自定义的 TrieWriter 源函数，从文件中读取敏感词添加到 TrieWriter 中
 func myFileSourceFunc(w *sensfilter.TrieWriter) {
-	// 打开敏感词文件
-	f, err := os.Open(sensfilter.GetCurrentAbPath() + "/example/sens_words.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// 将文件内容写入 TrieWriter
-	_, err = io.Copy(w, f)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// 从文件中插入敏感词
+	w.InsertFile(sensfilter.GetCurrentAbPath() + "/example/sens_words.txt")
 }
 
 func main() {

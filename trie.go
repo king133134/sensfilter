@@ -1,7 +1,9 @@
 package sensfilter
 
 import (
+	"bufio"
 	"bytes"
+	"os"
 	"unicode/utf8"
 )
 
@@ -82,8 +84,30 @@ func (t *TrieWriter) trie() *trie {
 	return t.tireRoot
 }
 
-// Write将一个字节数组写入到trie树中，返回写入的字节数和nil错误。在遍历字节数组的过程中，跳过被定义在skip属性中的字符，如果遇到换行符则在该单词的结尾节点标记为end。调用了Insert(word string)方法。
-func (t *TrieWriter) Write(p []byte) (n int, err error) {
+func (t *TrieWriter) InsertFile(filename string) {
+	// 打开文件并创建 Scanner 对象
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	scanner := bufio.NewScanner(file)
+
+	// 设置缓冲区大小为 64KB，避免多次分配内存
+	size := 64 * 1024
+	scanner.Buffer(make([]byte, size), 16*size)
+
+	// 分批读取文件并处理每一行数据
+	for scanner.Scan() {
+		t.InsertBytes(scanner.Bytes())
+	}
+}
+
+// InsertBytes 将一个字节数组写入到trie树中，返回写入的字节数和nil错误。在遍历字节数组的过程中，跳过被定义在skip属性中的字符，如果遇到换行符则在该单词的结尾节点标记为end
+func (t *TrieWriter) InsertBytes(p []byte) (n int) {
 	n = len(p) // 获取字节数组的长度
 
 loop:
