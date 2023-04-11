@@ -59,7 +59,7 @@ func (t *TrieWriter) Insert(word string) *TrieWriter {
 		node = node.next[v]
 		node.len = uint8(wLen)
 	}
-	if wLen > 0 { // 如果单词不为空，将结尾节点标记为end，并且数量加1。
+	if wLen > 0 && !node.end { // 如果单词不为空，将结尾节点标记为end，并且数量加1。
 		node.end = true
 		t.size++
 	}
@@ -132,9 +132,7 @@ func (t *TrieWriter) InsertFile(filename string) {
 
 // InsertBytes 将一个字节数组写入到trie树中，返回写入的字节数和nil错误。在遍历字节数组的过程中，跳过被定义在skip属性中的字符，如果遇到换行符则在该单词的结尾节点标记为end
 func (t *TrieWriter) InsertBytes(p []byte, delim byte) (n int) {
-	n = len(p) // 获取字节数组的长度
-
-loop:
+	n = len(p)           // 获取字节数组的长度
 	for i := 0; i < n; { // 遍历字节数组
 		node := t.trie() // 从trie树的根节点开始
 		wLen := 0
@@ -143,15 +141,9 @@ loop:
 			r, l := decodeBytes(p[i:]) // 解码字节数组中的一个rune，并且获取该rune的字节数量
 
 			// 跳过一些无意义的字符
-			for {
-				if l == 0 { // 如果已经到达了字节数组的最后一个字符，跳出循环
-					break loop
-				} else if t.skip.ShouldSkip(r) { // 判断该字符是否应该被跳过，如果需要，则继续向后遍历
-					i += l
-				} else { // 如果不需要被跳过，则跳出循环
-					break
-				}
-				r, l = decodeBytes(p[i:])
+			if t.skip.ShouldSkip(r) {
+				i += l
+				continue
 			}
 
 			if _, ok := node.next[r]; !ok { // 如果下一个节点不存在，则创建一个新节点
@@ -163,7 +155,7 @@ loop:
 			i += l                 // 向后移动光标
 		}
 
-		if wLen > 0 { // 如果单词不为空，将结尾节点标记为end，并且数量加1。
+		if wLen > 0 && !node.end { // 如果单词不为空，将结尾节点标记为end，并且数量加1。
 			node.end = true
 			t.size++
 		}
@@ -203,9 +195,6 @@ func (t *TrieWriter) BuildFail() int {
 				} else { // 如果找到了匹配字符c的节点，则将当前节点的失败指针设置为该节点
 					curr.fail = failTo.next[c]
 				}
-				if curr.fail.end { // 如果当前节点的失败指针是一个单词的结尾，则将当前节点也标记为单词的结尾
-					curr.end = true
-				}
 			}
 		}
 	}
@@ -235,9 +224,39 @@ loop:
 				}
 			}
 			for r, node := range p.trie.next { // 遍历当前节点的所有子节点
-				queue = append(queue, &pair{node, append(append([]rune(nil), p.runes...), r)}) // 将子节点加入队列，并更新字符序列
+				queue = append(queue, &pair{node, appendRunes(p.runes, r)}) // 将子节点加入队列，并更新字符序列
 			}
 		}
 	}
 	return string(buf.Bytes()[:buf.Len()-1]) // 返回缓冲区中的字符串，去掉最后一个换行符
+}
+
+func appendRunes(runes []rune, r rune) []rune {
+	res := make([]rune, len(runes)+1)
+	copy(res, runes)
+	res[len(res)-1] = r
+	return res
+}
+
+func (t *TrieWriter) Array() []string {
+	type pair struct { // 定义一个键值对，trie表示trie树中的节点，runes表示从根节点到当前节点的字符序列
+		trie  *trie
+		runes []rune
+	}
+	res := make([]string, 0, t.Size())
+	queue := []*pair{{t.trie(), nil}}
+	for len(queue) > 0 { // 遍历队列直到队列为空或者达到限制的输出结果数
+		temp := make([]*pair, len(queue)) // 创建临时队列并将队列中的元素复制到临时队列中
+		copy(temp, queue)
+		queue = queue[:0]        // 清空队列
+		for _, p := range temp { // 遍历临时队列中的节点
+			if p.trie.end { // 如果当前节点是单词的结尾，则将字符序列转为字符串并添加到缓冲区中
+				res = append(res, string(p.runes))
+			}
+			for r, node := range p.trie.next { // 遍历当前节点的所有子节点
+				queue = append(queue, &pair{node, appendRunes(p.runes, r)}) // 将子节点加入队列，并更新字符序列
+			}
+		}
+	}
+	return res
 }
