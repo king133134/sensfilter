@@ -53,7 +53,7 @@ func Network(pageUrl string, skip ...string) (search *Search, err error) {
 	if err != nil {
 		return nil, err
 	}
-	writer.InsertBytes(data)
+	writer.InsertBytes(data, '\n')
 	writer.BuildFail()
 	return search, nil
 }
