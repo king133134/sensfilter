@@ -157,6 +157,12 @@ loop:
 			if next := node.next[v]; next != nil {
 				node = next
 			} else {
+				if res == nil && node.fail.end {
+					sub := string(word[len(word)-int(node.fail.len):])       // 记录匹配的子串
+					end := j - 1                                             // 敏感词在 s 中的结束位置
+					start := findSub(s, end, sub)                            // 找到敏感词在 s 中的起始位置
+					res = &Result{sub, string(s[start : end+1]), start, end} // 记录敏感词相关信息
+				}
 				if res != nil {
 					list = append(list, res)
 					word = word[:0]

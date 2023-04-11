@@ -186,9 +186,9 @@ func TestSearch_Find2(t *testing.T) {
 }
 
 func TestSearch_Find3(t *testing.T) {
-	words := []string{"林茹", "林如", "临蓐", "空子", "霸王龙", "我是个SB", "是我"}
+	words := []string{"林茹", "林如", "临蓐", "空子", "霸王龙", "我是个SB", "是我", "abcd", "bc"}
 	obj := Strings(words)
-	str := []byte("我空ss子sss我是霸**王*龙,我是我我是个(S)(B)真的")
+	str := []byte("我空ss子sss我是霸**王*龙,我是我我是个(S)(B)真的abcccc")
 	res := obj.Find(str)
 
 	type wantPair struct {
@@ -200,6 +200,7 @@ func TestSearch_Find3(t *testing.T) {
 		{"霸王龙", "霸**王*龙"},
 		{"是我", "是我"},
 		{"我是个SB", "我是个(S)(B"},
+		{"bc", "bc"},
 	}
 
 	for i, v := range res {
