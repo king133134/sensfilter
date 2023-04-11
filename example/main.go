@@ -41,7 +41,8 @@ func fileNew() {
 	// 查找敏感词
 	res := obj.Find(str)
 	// 判断字符串是否包含敏感词
-	fmt.Println(res, obj.HasSens(str), obj.ReplaceRune(str, rune('*')))
+	fmt.Println("trie size:", obj.TrieWriter().Size())
+	fmt.Println(res, obj.HasSens(str), string(obj.ReplaceRune(str, rune('*'))), obj.TrieWriter())
 }
 
 func networkNew() {
@@ -58,7 +59,7 @@ func networkNew() {
 	// 查找敏感词
 	res := obj.Find([]byte(str))
 	// 判断字符串是否包含敏感词
-	fmt.Println(res, obj.HasSens([]byte("我空ss子sss我是霸**王*龙,我是我我是个(S)(B)真的")))
+	fmt.Println(res, obj.TrieWriter(), obj.HasSens([]byte("我空ss子sss我是霸**王*龙,我是我我是个(S)(B)真的")))
 }
 
 func mysqlNew() {

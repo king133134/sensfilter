@@ -3,6 +3,7 @@ package sensfilter
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"os"
 	"unicode/utf8"
 )
@@ -84,8 +85,13 @@ func (t *TrieWriter) trie() *trie {
 	return t.tireRoot
 }
 
+func (t *TrieWriter) InsertScanner(scanner *bufio.Scanner) {
+	for scanner.Scan() {
+		t.Insert(scanner.Text())
+	}
+}
+
 func (t *TrieWriter) InsertFile(filename string) {
-	// 打开文件并创建 Scanner 对象
 	file, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -94,20 +100,38 @@ func (t *TrieWriter) InsertFile(filename string) {
 		_ = file.Close()
 	}()
 
-	scanner := bufio.NewScanner(file)
-
-	// 设置缓冲区大小为 64KB，避免多次分配内存
-	size := 64 * 1024
-	scanner.Buffer(make([]byte, size), 16*size)
-
-	// 分批读取文件并处理每一行数据
-	for scanner.Scan() {
-		t.InsertBytes(scanner.Bytes())
+	buf := make([]byte, 64*1024)
+	var delim byte = '\n'
+	start, end, n := 0, 0, 0
+	for {
+		n, err = file.Read(buf[start:])
+		if err == io.EOF {
+			t.InsertBytes(buf[:end], delim)
+			break
+		}
+		if err != nil {
+			panic(err)
+		}
+		end = n + start
+		last := end
+		if last == len(buf) {
+			last = bytes.LastIndexByte(buf[:end], delim)
+		} else {
+			t.InsertBytes(buf[:last], delim)
+			break
+		}
+		if last == -1 {
+			panic("word too long")
+		}
+		t.InsertBytes(buf[:last], delim)
+		copy(buf, buf[last+1:end])
+		start = end - last - 1
+		end -= last - 1
 	}
 }
 
 // InsertBytes 将一个字节数组写入到trie树中，返回写入的字节数和nil错误。在遍历字节数组的过程中，跳过被定义在skip属性中的字符，如果遇到换行符则在该单词的结尾节点标记为end
-func (t *TrieWriter) InsertBytes(p []byte) (n int) {
+func (t *TrieWriter) InsertBytes(p []byte, delim byte) (n int) {
 	n = len(p) // 获取字节数组的长度
 
 loop:
@@ -115,7 +139,7 @@ loop:
 		node := t.trie() // 从trie树的根节点开始
 		wLen := 0
 
-		for i < n && p[i] != '\n' { // 判断字符是否为换行符并且还没有遍历完整个字节数组
+		for i < n && p[i] != delim { // 判断字符是否为换行符并且还没有遍历完整个字节数组
 			r, l := decodeBytes(p[i:]) // 解码字节数组中的一个rune，并且获取该rune的字节数量
 
 			// 跳过一些无意义的字符
@@ -144,7 +168,7 @@ loop:
 			t.size++
 		}
 
-		for i < n && (p[i] == '\n' || p[i] == '\r') { // 判断是否为换行符或回车符，并且还没有遍历完整个字节数组
+		for i < n && p[i] == delim { // 判断是否为分隔符
 			i++ // 向后移动光标
 		}
 	}

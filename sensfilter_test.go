@@ -264,7 +264,6 @@ func TestSearch_FindWithSkip(t *testing.T) {
 	}
 
 	if len(wants) != len(res) {
-		fmt.Println(res)
 		t.Fatalf("The number of matched sensitive words is incorrect.wants len:%d,result len:%d", len(wants), len(res))
 	}
 
