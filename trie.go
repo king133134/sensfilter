@@ -126,7 +126,7 @@ func (t *TrieWriter) InsertFile(filename string) {
 		t.InsertBytes(buf[:last], delim)
 		copy(buf, buf[last+1:end])
 		start = end - last - 1
-		end -= last - 1
+		end -= last + 1
 	}
 }
 
