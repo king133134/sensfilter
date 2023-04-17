@@ -3,6 +3,7 @@ package sensfilter
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"unicode/utf8"
@@ -99,35 +100,42 @@ func (t *TrieWriter) InsertFile(filename string) {
 	defer func() {
 		_ = file.Close()
 	}()
+	_, _ = t.InsertReader(file, '\n')
+}
 
-	buf := make([]byte, 64*1024)
-	var delim byte = '\n'
-	start, end, n := 0, 0, 0
+func (t *TrieWriter) InsertReader(reader io.Reader, delim byte) (n int, err error) {
+	return t.insertReader(reader, make([]byte, 64*1024), delim)
+}
+
+func (t *TrieWriter) insertReader(reader io.Reader, buf []byte, delim byte) (n int, err error) {
+	start, end, n1 := 0, 0, 0
 	for {
-		n, err = file.Read(buf[start:])
+		n1, err = reader.Read(buf[start:])
 		if err == io.EOF {
 			t.InsertBytes(buf[:end], delim)
 			break
 		}
 		if err != nil {
-			panic(err)
+			break
 		}
-		end = n + start
+		end = n1 + start
 		last := end
-		if last == len(buf) {
-			last = bytes.LastIndexByte(buf[:end], delim)
-		} else {
+		n += n1
+		if last < len(buf) {
 			t.InsertBytes(buf[:last], delim)
 			break
 		}
+		last = bytes.LastIndexByte(buf[:end], delim)
 		if last == -1 {
-			panic("word too long")
+			err = errors.New("word too long")
+			break
 		}
 		t.InsertBytes(buf[:last], delim)
 		copy(buf, buf[last+1:end])
 		start = end - last - 1
 		end -= last + 1
 	}
+	return
 }
 
 // InsertBytes 将一个字节数组写入到trie树中，返回写入的字节数和nil错误。在遍历字节数组的过程中，跳过被定义在skip属性中的字符，如果遇到换行符则在该单词的结尾节点标记为end
