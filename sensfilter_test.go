@@ -1,8 +1,11 @@
 package sensfilter
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
+	"sort"
+	"strings"
 	"testing"
 	"unicode/utf8"
 )
@@ -272,6 +275,93 @@ func TestSearch_FindWithSkip(t *testing.T) {
 		want := wants[i]
 		if v.Word != want.word || v.Matched != want.matched {
 			t.Fatalf("Unable to match sensitive word：%s", want.word)
+		}
+	}
+}
+
+func TestTrieWriter_InsertReader(t *testing.T) {
+	writer := NewTrieWriter()
+	skipper := &Skip{}
+	skipper.Set("*!")
+	writer.setSkip(skipper)
+	_, _ = writer.insertReader(strings.NewReader("TMD\nfuck\n霸**王龙\n真的好吗"), make([]byte, 1024), '\n')
+	want := []string{"TMD", "fuck", "霸王龙", "真的好吗"}
+	res := writer.Array()
+	if len(want) != len(res) {
+		t.Fatalf("Incorrect number of sensitive words.want len:%d,result len:%d", len(want), len(res))
+	}
+
+	sort.Strings(res)
+	sort.Strings(want)
+	for i, v := range res {
+		word := want[i]
+		if word != v {
+			t.Fatalf("Unable to match sensitive word: %s, result: %s", word, v)
+		}
+	}
+}
+
+func randWords(length int) []string {
+	res := make([]string, length)
+	str := []rune("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳酆")
+	strLen := len(str)
+	exists := map[string]struct{}{}
+	for i := 0; i < length; {
+		l := 3 + rand.Intn(18)
+		b := bytes.Buffer{}
+		for l > 0 {
+			idx := rand.Intn(strLen)
+			b.WriteRune(str[idx])
+			l--
+		}
+		item := b.String()
+		if _, ok := exists[item]; ok {
+			continue
+		}
+		exists[item] = struct{}{}
+		res[i] = item
+		i++
+	}
+	return res
+}
+
+func TestTrieWriter_InsertReaderBoundaryTesting(t *testing.T) {
+	writer := NewTrieWriter()
+	writer.setSkip(&Skip{})
+	readerBuf := make([]byte, 1024*4)
+	words := randWords(len(readerBuf) >> 1)
+	reader := &bytes.Buffer{}
+	var want []string
+	for _, word := range words {
+		if reader.Len()+len(word) > len(readerBuf) {
+			left := len(readerBuf) - reader.Len()
+			s := make([]byte, 0, left)
+			for left > 0 {
+				s = append(s, 'e')
+				left--
+			}
+			want = append(want, string(s))
+			reader.Write(s)
+			break
+		}
+		want = append(want, word)
+		reader.WriteString(word + "\n")
+	}
+	fmt.Println("reader len:", reader.Len())
+
+	_, _ = writer.insertReader(reader, readerBuf, '\n')
+
+	res := writer.Array()
+	if len(want) != len(res) {
+		t.Fatalf("Incorrect number of sensitive words.want len:%d,result len:%d", len(want), len(res))
+	}
+
+	sort.Strings(res)
+	sort.Strings(want)
+	for i, v := range res {
+		word := want[i]
+		if word != v {
+			t.Fatalf("Unable to match sensitive word: %s, result: %s", word, v)
 		}
 	}
 }
