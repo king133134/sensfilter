@@ -14,11 +14,6 @@ func (_this *Search) TrieWriter() *TrieWriter {
 	return _this.trieWriter
 }
 
-// decodeStr 使用 utf8 解码字符串并返回 rune 和字节数
-func decodeStr(s string) (r rune, size int) {
-	return utf8.DecodeRuneInString(s)
-}
-
 // decodeBytes 使用 utf8 解码字节数组并返回 rune 和字节数
 func decodeBytes(s []byte) (r rune, size int) {
 	return utf8.DecodeRune(s)
@@ -114,7 +109,6 @@ func (_this *Search) findByAC(s []byte, single bool) (list []*Result) {
 	trieRoot := _this.trieWriter.trie() // 获取 trieRoot 树根节点
 	skipper := _this.trieWriter.Skip()  // 获取跳过字符的规则
 
-loop:
 	for i := 0; i < n; {
 		v, l := decodeBytes(s[i:])   // 解码以 s[i:] 开头的字节数组，并返回第一个 rune 和其所占字节数
 		node, ok := trieRoot.next[v] // 在 trieRoot 中查找下一个节点
@@ -130,9 +124,6 @@ loop:
 			skip int     // 记录跳过的无意义字符数量
 		)
 		for {
-			if l == 0 { // l等于0说明字符串结束
-				break loop
-			}
 			word = append(word, s[j:j+l]...) // 将找到的字符加入 word 中
 			if node.end {                    // 如果当前节点是一个单词的结尾，则说明找到了一个敏感词
 				sub := string(word[len(word)-int(node.len):])            // 记录匹配的子串
@@ -180,65 +171,5 @@ loop:
 			}
 		}
 	}
-	return
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func (_this *Search) find(s []byte, w ResultWriter) {
-	n := len(s)
-	trieRoot := _this.trieWriter.trie()
-	skipper := _this.trieWriter.Skip()
-next:
-	for i := 0; i < n; {
-		v, l := decodeBytes(s[i:])
-		// 如果该节点不存在，则跳过
-		node, ok := trieRoot.next[v]
-		if !ok {
-			i += l
-			continue
-		}
-
-		j := i
-		var (
-			word []rune
-			res  *Result
-		)
-		for {
-			word = append(word, v)
-			if node.end {
-				res = &Result{string(word), string(s[i : j+l]), i, j + l}
-			}
-
-			j += l
-			// 跳过一些无意义的字符
-			for {
-				v, l = decodeBytes(s[j:])
-				if j < n && skipper.ShouldSkip(v) {
-					j += l
-				} else {
-					break
-				}
-			}
-
-			node = node.next[v]
-			// 如果找不到直接break
-			if node == nil {
-				if res == nil {
-					j = i + 1
-				} else if w.Write(res) {
-					return
-				}
-				i = j
-				continue next
-			}
-		}
-	}
-
 	return
 }

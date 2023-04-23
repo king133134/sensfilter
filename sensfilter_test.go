@@ -1,9 +1,11 @@
 package sensfilter
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -21,6 +23,64 @@ func (_this *myWriter) Write(result2 *Result) (stop bool) {
 
 func (_this *myWriter) Len() int {
 	return len(_this.list)
+}
+
+func (_this *Search) find(s []byte, w ResultWriter) {
+	n := len(s)
+	trieRoot := _this.trieWriter.trie()
+	skipper := _this.trieWriter.Skip()
+next:
+	for i := 0; i < n; {
+		v, l := decodeBytes(s[i:])
+		// 如果该节点不存在，则跳过
+		node, ok := trieRoot.next[v]
+		if !ok {
+			i += l
+			continue
+		}
+
+		j := i
+		var (
+			word []rune
+			res  *Result
+		)
+		for {
+			word = append(word, v)
+			if node.end {
+				res = &Result{string(word), string(s[i : j+l]), i, j + l}
+			}
+
+			j += l
+			// 跳过一些无意义的字符
+			for {
+				v, l = decodeBytes(s[j:])
+				if j < n && skipper.ShouldSkip(v) {
+					j += l
+				} else {
+					break
+				}
+			}
+
+			node = node.next[v]
+			// 如果找不到直接break
+			if node == nil {
+				if res == nil {
+					j = i + 1
+				} else if w.Write(res) {
+					return
+				}
+				i = j
+				continue next
+			}
+		}
+	}
+
+	return
+}
+
+// decodeStr 使用 utf8 解码字符串并返回 rune 和字节数
+func decodeStr(s string) (r rune, size int) {
+	return utf8.DecodeRuneInString(s)
 }
 
 func (_this *Search) findB(s string, w ResultWriter) {
@@ -228,6 +288,20 @@ func TestSearch_Replace(t *testing.T) {
 	}
 }
 
+func TestSearch_ReplaceRune(t *testing.T) {
+	words := []string{"dog", "cat", "apple", "orange", "chicken", "鸭子", "水果", "敏感词"}
+	obj := Strings(words)
+
+	input := "I have a dog and a cat, and I love eating apples and oranges. I also like to eat chicken and duck (鸭子)."
+	expectedOutput := "I have a *** and a ***, and I love eating *****s and ******s. I also like to eat ******* and duck (**)."
+
+	output := obj.ReplaceRune([]byte(input), '*')
+
+	if string(output) != expectedOutput {
+		t.Fatalf("Unexpected output. Expected: %s. Got: %s.", expectedOutput, output)
+	}
+}
+
 func TestSearch_HasSens(t *testing.T) {
 	words := []string{"dog", "cat", "apple", "orange", "chicken", "鸭子", "水果", "敏感词"}
 	obj := Strings(words)
@@ -279,6 +353,48 @@ func TestSearch_FindWithSkip(t *testing.T) {
 	}
 }
 
+func TestSearch_FindWithSkip2(t *testing.T) {
+	words := []string{"T*M!!!D"}
+	obj := NewSearch(SetSortedSkip("!*"))
+	obj.TrieWriter().InsertWords(words).BuildFail()
+
+	if fmt.Sprintf("%v", obj.TrieWriter().Skip()) != "!*" {
+		t.Fatalf("skipper is not match.")
+	}
+
+	str := "T***MD;T*M**D;T!MD;T#M#DFUCK"
+	_, _ = obj.TrieWriter().WriteString("FUCK")
+	obj.TrieWriter().BuildFail()
+	res := obj.Find([]byte(str))
+
+	type wantPair struct {
+		word    string
+		matched string
+	}
+
+	wants := []wantPair{
+		{"TMD", "T***MD"},
+		{"TMD", "T*M**D"},
+		{"TMD", "T!MD"},
+		{"FUCK", "FUCK"},
+	}
+
+	if len(wants) != len(res) {
+		t.Fatalf("The number of matched sensitive words is incorrect.wants len:%d,result len:%d", len(wants), len(res))
+	}
+
+	for i, v := range res {
+		want := wants[i]
+		if v.Word != want.word || v.Matched != want.matched {
+			t.Fatalf("Unable to match sensitive word：%s", want.word)
+		}
+	}
+
+	if obj.TrieWriter().String() != "TMD\nFUCK" {
+		t.Fatalf("trie writer sensitive words is not match.")
+	}
+}
+
 func TestTrieWriter_InsertReader(t *testing.T) {
 	writer := NewTrieWriter()
 	skipper := &Skip{}
@@ -298,6 +414,22 @@ func TestTrieWriter_InsertReader(t *testing.T) {
 		if word != v {
 			t.Fatalf("Unable to match sensitive word: %s, result: %s", word, v)
 		}
+	}
+}
+
+func TestTrieWriter_InsertFile(t *testing.T) {
+	obj, err := File("./example/word")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile("./example/word")
+
+	want := strings.Split(string(data), "\n")
+	res := obj.TrieWriter().Array()
+	sort.Strings(res)
+	sort.Strings(want)
+	if len(want) != len(res) {
+		t.Fatalf("Incorrect number of sensitive words.want len:%d,result len:%d", len(want), len(res))
 	}
 }
 
@@ -335,13 +467,15 @@ func TestTrieWriter_InsertReaderBoundaryTesting(t *testing.T) {
 	for _, word := range words {
 		if reader.Len()+len(word) > len(readerBuf) {
 			left := len(readerBuf) - reader.Len()
-			s := make([]byte, 0, left)
-			for left > 0 {
-				s = append(s, 'e')
-				left--
+			if left > 0 {
+				s := make([]byte, 0, left)
+				for left > 0 {
+					s = append(s, 'e')
+					left--
+				}
+				want = append(want, string(s))
+				reader.Write(s)
 			}
-			want = append(want, string(s))
-			reader.Write(s)
 			break
 		}
 		want = append(want, word)
@@ -350,6 +484,48 @@ func TestTrieWriter_InsertReaderBoundaryTesting(t *testing.T) {
 	fmt.Println("reader len:", reader.Len())
 
 	_, _ = writer.insertReader(reader, readerBuf, '\n')
+
+	res := writer.Array()
+	if len(want) != len(res) {
+		t.Fatalf("Incorrect number of sensitive words.want len:%d,result len:%d", len(want), len(res))
+	}
+
+	sort.Strings(res)
+	sort.Strings(want)
+	for i, v := range res {
+		word := want[i]
+		if word != v {
+			t.Fatalf("Unable to match sensitive word: %s, result: %s", word, v)
+		}
+	}
+}
+
+func TestTrieWriter_InsertScanner(t *testing.T) {
+	writer := NewTrieWriter()
+	writer.setSkip(&Skip{})
+	readerBuf := make([]byte, 1024*4)
+	words := randWords(len(readerBuf) >> 1)
+	reader := &bytes.Buffer{}
+	var want []string
+	for _, word := range words {
+		if reader.Len()+len(word) > len(readerBuf) {
+			left := len(readerBuf) - reader.Len()
+			if left > 0 {
+				s := make([]byte, 0, left)
+				for left > 0 {
+					s = append(s, 'e')
+					left--
+				}
+				want = append(want, string(s))
+				reader.Write(s)
+			}
+			break
+		}
+		want = append(want, word)
+		reader.WriteString(word + "\n")
+	}
+
+	writer.InsertScanner(bufio.NewScanner(reader))
 
 	res := writer.Array()
 	if len(want) != len(res) {
