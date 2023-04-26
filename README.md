@@ -80,7 +80,6 @@ func main() {
 }
 ```
 
-上面的"我是个(S)(B)"就无法匹配，默认跳过的字符列表是包含"()"，默认的字符列表[trie.go](https://github.com/king133134/sensfilter/blob/master/skip.go)的sortedSkipList  
 输出：
 ```text
 [word:霸王龙 mathced:霸**王*龙 start:20 end:31; word:是我 mathced:是我 start:36 end:41; word:TMD mathced:TMD start:64 end:66; word:他妈的 mathced:他妈的 start:70 end:78;]
